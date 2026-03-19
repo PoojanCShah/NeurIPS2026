@@ -97,7 +97,7 @@ Outputs: `results/exp1_noise/{family}_d{d}.pdf`, `results/exp1_noise/runtime_{fa
 ---
 
 
-#### Discussion
+
 
 
 ### exp2 — Sample size scaling
@@ -120,7 +120,6 @@ Outputs: `results/exp2_sample/{family}_d{d}.pdf`, `results/exp2_sample/runtime_{
 ---
 
 
-#### Discussion
 
 
 
@@ -139,8 +138,3 @@ python experiments/exp3_jl.py --families linear --estimators MLE TwoNN CorrInt -
 Outputs: `results/exp3_jl/{family}_d{d}.pdf`, `results/exp3_jl/runtime_{family}.pdf`
 
 
-#### Discussion
-
-![linear_d5](results/exp3_jl/linear_d5.pdf)
-
-![linear_d10](results/exp3_jl/linear_d10.pdf)

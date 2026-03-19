@@ -20,9 +20,27 @@ pip install -r requirements.txt
 # Quick smoke test — all six estimators on a 2D manifold in 10D ambient space
 python estimators.py
 
+# Generate datasets before running experiments (required first time)
+python datasets.py                          # clean only (eta=0)
+python datasets.py --eta 0 0.1 0.5         # also noisy variants
+
 # exp0: sanity check on hypercube [0,1]^d for d ∈ {2,3,5,7,10}
 python experiments/exp0_check.py
+
+# exp1: noise sensitivity — sweeps η, records ID estimate + runtime per estimator
+python experiments/exp1_noise.py
+python experiments/exp1_noise.py --families hypercube --estimators MLE TwoNN CorrInt --dims 2 5 10
+
+# exp2: sample size scaling — sweeps n, fixed noise level
+python experiments/exp2_sample.py
+python experiments/exp2_sample.py --eta 0.1 --no-generate
+
+# exp3: Johnson–Lindenstrauss projection — compares id_jl vs id_original as k varies
+python experiments/exp3_jl.py
+python experiments/exp3_jl.py --families linear --estimators MLE TwoNN --dims 2 5 10
 ```
+
+All experiment scripts share these flags: `--dims`, `--families`, `--estimators`, `--no-generate` (skip dataset generation). Outputs go to `results/{exp_name}/` as PDFs.
 
 ## Code Architecture
 
@@ -49,6 +67,14 @@ est.dimension_      # float — estimated intrinsic dimension
 - `knn(X, k)` — k-NN distances/indices via sklearn (self excluded)
 - `lens(vectors)` — row-wise L2 norms
 - `binom_coeff(n, k)`, `indnComb(n, k)`, `efficient_indnComb(n, k, rng)` — combinatorics for DANCo/ESS
+
+### `datasets.py` — dataset generation and loading
+
+Three synthetic families: `hypercube` (uniform on `[0,1]^d`), `gaussian` (isotropic `N(0,I_d)`), `linear` (d-dim subspace in `R^1000` via random orthonormal basis). Each stored as `data/{family}_d{d}[_D{D}]_eta{eta:.3f}.npz` with arrays `X, d, D, eta, avg_dist, seed`. Noise model: `std = η × avg_dist`.
+
+Key constants: `DIMS_INTRINSIC = [2,3,5,10,20,50,75,100,250,500,1000]`, `AMBIENT_DIM = 1000`, `N_TOTAL = 25_000`.
+
+`load_dataset(family, d, eta, D, n_samples, seed)` handles subsampling at load time without modifying stored files.
 
 ### `estimators.py` — entry point
 
