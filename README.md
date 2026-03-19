@@ -96,6 +96,10 @@ Outputs: `results/exp1_noise/{family}_d{d}.pdf`, `results/exp1_noise/runtime_{fa
 
 ---
 
+
+#### Discussion
+
+
 ### exp2 — Sample size scaling
 
 Sweeps sample sizes `n ∈ {50, 100, 250, 500, 750, 1k, 2.5k, 5k}` at a fixed noise level and records each estimator's ID estimate and runtime.  Reveals how much data each estimator needs to converge toward the true ID.
@@ -115,6 +119,11 @@ Outputs: `results/exp2_sample/{family}_d{d}.pdf`, `results/exp2_sample/runtime_{
 
 ---
 
+
+#### Discussion
+
+
+
 ### exp3 — Johnson–Lindenstrauss projection
 
 Projects data to `k ∈ {2, 5, 10, 20, 50, 100, 200, 500, 750, 1000}` dimensions via a scaled Gaussian JL map and compares `id_jl` against `id_original` as a function of `k`.  Each run uses an independent subsample and an independent projection matrix.  The linear family (ambient D=1000) is the most informative: `id_jl` should recover `id_original` once `k` crosses the intrinsic dimension `d`.
@@ -128,3 +137,10 @@ python experiments/exp3_jl.py --families linear --estimators MLE TwoNN CorrInt -
 ```
 
 Outputs: `results/exp3_jl/{family}_d{d}.pdf`, `results/exp3_jl/runtime_{family}.pdf`
+
+
+#### Discussion
+
+![linear_d5](results/exp3_jl/linear_d5.pdf)
+
+![linear_d10](results/exp3_jl/linear_d10.pdf)

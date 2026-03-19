@@ -108,7 +108,8 @@ def run_experiment(dims: list[int],
                    families: list[str] | None = None,
                    est_names: list[str] | None = None,
                    n_samples: int = N_SAMPLES,
-                   eta: float = ETA) -> tuple[dict, dict, dict, dict]:
+                   eta: float = ETA,
+                   ambient_dim: int = None) -> tuple[dict, dict, dict, dict]:
     """
     Returns
     -------
@@ -132,15 +133,16 @@ def run_experiment(dims: list[int],
     for family in pbar_family:
         pbar_family.set_description(f"family={family}")
 
+        _linear_D = ambient_dim if ambient_dim else AMBIENT_DIM
         valid_dims = [d for d in dims
-                      if not (family == "linear" and d > AMBIENT_DIM)]
+                      if not (family == "linear" and d > _linear_D)]
 
         pbar_d = tqdm(valid_dims, desc="  d", position=1, leave=False)
         for d in pbar_d:
             pbar_d.set_description(f"  d={d}")
 
             ds     = load_dataset(family, d, eta=eta,
-                                  D=AMBIENT_DIM if family == "linear" else None)
+                                  D=_linear_D if family == "linear" else None)
             X_full = ds["X"]
             ambient = X_full.shape[1]
             family_ambient[family] = ambient   # constant within a family
@@ -419,22 +421,28 @@ def main():
                         help=f"Points per run (default: {N_SAMPLES})")
     parser.add_argument("--no-generate", action="store_true",
                         help="Skip dataset generation")
+    parser.add_argument("--ambient-dim", type=int, default=None,
+                        metavar="D",
+                        help="For linear family: fixed ambient dimension D "
+                             f"(default: {AMBIENT_DIM}). Example: --ambient-dim 50")
     args = parser.parse_args()
 
-    dims      = args.dims       if args.dims       is not None else DIMS_INTRINSIC
-    families  = args.families   if args.families   is not None else FAMILIES
-    est_names = args.estimators if args.estimators is not None else ALL_EST_NAMES
-    eta       = args.eta
-    n_samples = args.n_samples
+    dims        = args.dims       if args.dims       is not None else DIMS_INTRINSIC
+    families    = args.families   if args.families   is not None else FAMILIES
+    est_names   = args.estimators if args.estimators is not None else ALL_EST_NAMES
+    eta         = args.eta
+    n_samples   = args.n_samples
+    ambient_dim = args.ambient_dim
 
     if not args.no_generate:
         print("Generating datasets …")
-        generate_all(eta_values=[eta], n=N_TOTAL, seed=BASE_SEED, dims=dims)
+        generate_all(eta_values=[eta], n=N_TOTAL, seed=BASE_SEED, dims=dims,
+                     D=ambient_dim if ambient_dim else AMBIENT_DIM)
 
     print("\nRunning estimators …")
     orig_sc, orig_rt, jl_sc, jl_rt, fam_ambient = run_experiment(
         dims, families=families, est_names=est_names,
-        n_samples=n_samples, eta=eta,
+        n_samples=n_samples, eta=eta, ambient_dim=ambient_dim,
     )
 
     print("\nSaving figures …")
