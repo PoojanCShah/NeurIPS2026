@@ -3,11 +3,11 @@ Entry point. Imports all estimators from the `id` package and exposes run_all().
 """
 
 import numpy as np
-from id import CorrInt, MLE, TwoNN, DANCo, ESS, TLE
+from id import CorrInt, MLE, TwoNN, DANCo, ESS, TLE, PackingDim, QuantDim
 
 
 def run_all(X, n_neighbors: int = 20, random_state=None) -> dict:
-    """Fit all six estimators on X and return estimated intrinsic dimensions.
+    """Fit all eight estimators on X and return estimated intrinsic dimensions.
 
     Parameters
     ----------
@@ -15,19 +15,21 @@ def run_all(X, n_neighbors: int = 20, random_state=None) -> dict:
     n_neighbors : int
         Neighbourhood size for MLE, ESS, TLE.
     random_state : int or None
-        Seed for DANCo and ESS.
+        Seed for DANCo, ESS, PackingDim, and QuantDim.
 
     Returns
     -------
     dict[str, float]
     """
     return {
-        "corrint": CorrInt().fit(X).dimension_,
-        "mle":     MLE(n_neighbors=n_neighbors).fit(X).dimension_,
-        "twonn":   TwoNN().fit(X).dimension_,
-        "danco":   DANCo(random_state=random_state).fit(X).dimension_,
-        "ess":     ESS(n_neighbors=n_neighbors, random_state=random_state).fit(X).dimension_,
-        "tle":     TLE(n_neighbors=n_neighbors).fit(X).dimension_,
+        "corrint":    CorrInt().fit(X).dimension_,
+        "mle":        MLE(n_neighbors=n_neighbors).fit(X).dimension_,
+        "twonn":      TwoNN().fit(X).dimension_,
+        "danco":      DANCo(random_state=random_state).fit(X).dimension_,
+        "ess":        ESS(n_neighbors=n_neighbors, random_state=random_state).fit(X).dimension_,
+        "tle":        TLE(n_neighbors=n_neighbors).fit(X).dimension_,
+        "packingdim": PackingDim(random_state=random_state).fit(X).dimension_,
+        "quantdim":   QuantDim(random_state=random_state).fit(X).dimension_,
     }
 
 

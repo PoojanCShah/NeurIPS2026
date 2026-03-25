@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 from tqdm import tqdm
-from id import CorrInt, MLE, TwoNN, DANCo, ESS, TLE
+from id import CorrInt, MLE, TwoNN, DANCo, ESS, TLE, PackingDim, QuantDim
 
 # ── Experiment settings ───────────────────────────────────────────────────────
 
@@ -24,12 +24,14 @@ N_NEIGHBORS = 20
 RANDOM_STATE = 42
 
 ESTIMATORS = {
-    "CorrInt": CorrInt(),
-    "MLE":     MLE(n_neighbors=N_NEIGHBORS),
-    "TwoNN":   TwoNN(),
-    "DANCo":   DANCo(random_state=RANDOM_STATE),
-    "ESS":     ESS(n_neighbors=N_NEIGHBORS, random_state=RANDOM_STATE),
-    "TLE":     TLE(n_neighbors=N_NEIGHBORS),
+    "CorrInt":    CorrInt(),
+    "MLE":        MLE(n_neighbors=N_NEIGHBORS),
+    "TwoNN":      TwoNN(),
+    "DANCo":      DANCo(random_state=RANDOM_STATE),
+    "ESS":        ESS(n_neighbors=N_NEIGHBORS, random_state=RANDOM_STATE),
+    "TLE":        TLE(n_neighbors=N_NEIGHBORS),
+    "PackingDim": PackingDim(random_state=RANDOM_STATE),
+    "QuantDim":   QuantDim(random_state=RANDOM_STATE),
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────
