@@ -6,7 +6,6 @@ Run with:
     python app.py --port 8051 --debug
 """
 
-import os
 import argparse
 import dash
 import dash_bootstrap_components as dbc
@@ -26,16 +25,14 @@ app = dash.Dash(
     title="ID Estimation Dashboard",
     suppress_callback_exceptions=True,
 )
-server = app.server  # expose Flask server for gunicorn
 
 app.layout = build_layout()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port",  type=int,  default=int(os.environ.get("PORT", 7860)))
-    parser.add_argument("--host",  type=str,  default=os.environ.get("HOST", "0.0.0.0"))
-    parser.add_argument("--debug", action="store_true", default=False)
+    parser.add_argument("--port",  type=int,  default=8050)
+    parser.add_argument("--debug", action="store_true", default=True)
     args = parser.parse_args()
 
-    app.run(debug=args.debug, host=args.host, port=args.port)
+    app.run(debug=args.debug, port=args.port)

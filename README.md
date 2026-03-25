@@ -1,12 +1,3 @@
----
-title: ID Estimation Dashboard
-emoji: 📐
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
----
-
 # Code for NeurIPS 2026 Estimation
 
 ### 1. Selection of Distance Based Estimators
