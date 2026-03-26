@@ -53,6 +53,7 @@ def layout() -> html.Div:
             dbc.Col(dcc.Loading(dcc.Graph(id="exp1-id-plot",
                                           style={"height": "420px"})), width=12),
         ]),
+        html.Div(id="exp1-lipschitz", className="mt-2"),
         html.Div(id="exp1-error", className="text-danger small mt-2"),
     ])
 
@@ -104,12 +105,22 @@ def _ci(vals: list[float]) -> float:
     return float(Z95 * a.std(ddof=1) / np.sqrt(len(a))) if len(a) > 1 else 0.0
 
 
+def _lipschitz(etas: list, means: list[float]) -> float:
+    """Max pairwise slope over all (i, j) pairs — empirical Lipschitz constant."""
+    L = 0.0
+    for i in range(len(etas)):
+        for j in range(i + 1, len(etas)):
+            deta = abs(etas[j] - etas[i])
+            if deta > 0:
+                L = max(L, abs(means[j] - means[i]) / deta)
+    return L
+
+
 def build_figures(id_res: dict, rt_res: dict,
                   true_d: int, est_name: str) -> tuple:
     etas     = sorted(id_res)
     means    = [float(np.mean(id_res[e])) for e in etas]
     cis      = [_ci(id_res[e]) for e in etas]
-    rt_means = [float(np.mean(rt_res[e])) for e in etas]
 
     # ── ID vs η ───────────────────────────────────────────────────────────────
     id_fig = go.Figure()
@@ -135,34 +146,43 @@ def build_figures(id_res: dict, rt_res: dict,
         template="plotly_white", margin=dict(t=50, b=40, l=50, r=20),
     )
 
-    return id_fig
+    L = _lipschitz(etas, means)
+    return id_fig, L
 
 
 # ── Callback ───────────────────────────────────────────────────────────────────
 
 @callback(
-    Output("exp1-id-plot", "figure"),
-    Output("exp1-error",   "children"),
-    Input("exp1-run-btn",  "n_clicks"),
-    State("est-store",       "data"),
-    State("dataset-store",   "data"),
-    State("exp1-eta-values", "value"),
-    State("exp1-n-runs",     "value"),
+    Output("exp1-id-plot",    "figure"),
+    Output("exp1-lipschitz",  "children"),
+    Output("exp1-error",      "children"),
+    Input("exp1-run-btn",     "n_clicks"),
+    State("est-store",        "data"),
+    State("dataset-store",    "data"),
+    State("exp1-eta-values",  "value"),
+    State("exp1-n-runs",      "value"),
     prevent_initial_call=True,
 )
 def run_exp1(_, est_store, ds_store, eta_values_str, n_runs):
     if not est_store or not ds_store:
-        return go.Figure(), "Estimator or dataset store is empty."
+        return go.Figure(), "", "Estimator or dataset store is empty."
     try:
         eta_values = [float(x.strip()) for x in (eta_values_str or "").split(",")
                       if x.strip()]
     except ValueError:
-        return go.Figure(), "η values must be comma-separated numbers."
+        return go.Figure(), "", "η values must be comma-separated numbers."
     if not eta_values:
-        return go.Figure(), "Enter at least one η value."
+        return go.Figure(), "", "Enter at least one η value."
     try:
         id_res, rt_res = compute(est_store, ds_store, eta_values, int(n_runs or 5))
-        id_fig = build_figures(id_res, rt_res, ds_store["d"], est_store["name"])
-        return id_fig, ""
+        id_fig, L = build_figures(id_res, rt_res, ds_store["d"], est_store["name"])
+        lipschitz_card = dbc.Alert(
+            [html.Span("Estimated Lipschitz constant  ", className="text-muted small"),
+             html.Strong(f"L̂ = {L:.4f}",
+                         style={"fontSize": "15px", "fontFamily": "monospace"})],
+            color="light",
+            style={"padding": "8px 14px", "display": "inline-block"},
+        )
+        return id_fig, lipschitz_card, ""
     except Exception as exc:
-        return go.Figure(), f"Error: {exc}"
+        return go.Figure(), "", f"Error: {exc}"

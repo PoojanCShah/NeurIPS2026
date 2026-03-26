@@ -8,6 +8,7 @@ ID estimate ± 95 % CI and wall-clock runtime per run.
 import time
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import dash_bootstrap_components as dbc
 from dash import html, dcc, Input, Output, State, callback
 
@@ -51,8 +52,9 @@ def layout() -> html.Div:
 
         dbc.Row([
             dbc.Col(dcc.Loading(dcc.Graph(id="exp2-id-plot",
-                                          style={"height": "420px"})), width=12),
+                                          style={"height": "620px"})), width=12),
         ]),
+        html.Div(id="exp2-fits", className="mt-2"),
         html.Div(id="exp2-error", className="text-danger small mt-2"),
     ])
 
@@ -104,44 +106,109 @@ def _ci(vals: list[float]) -> float:
     return float(Z95 * a.std(ddof=1) / np.sqrt(len(a))) if len(a) > 1 else 0.0
 
 
+def _fit_scaling(ns: list, means: list[float], true_d: int) -> dict | None:
+    """Fit log|true_d - d_hat| = a + b*log(n) via OLS."""
+    errors = [abs(true_d - m) for m in means]
+    valid  = [(n, e) for n, e in zip(ns, errors) if e > 0]
+    if len(valid) < 2:
+        return None
+    ns_v, es_v = zip(*valid)
+    b, a = np.polyfit(np.log(ns_v), np.log(es_v), 1)
+    return dict(a=float(a), b=float(b))
+
+
 def build_figures(id_res: dict, rt_res: dict,
                   true_d: int, est_name: str) -> tuple:
-    ns       = sorted(id_res)
-    means    = [float(np.mean(id_res[n])) for n in ns]
-    cis      = [_ci(id_res[n]) for n in ns]
-    rt_means = [float(np.mean(rt_res[n])) for n in ns]
+    ns    = sorted(id_res)
+    means = [float(np.mean(id_res[n])) for n in ns]
+    cis   = [_ci(id_res[n]) for n in ns]
 
-    # ── ID vs n ───────────────────────────────────────────────────────────────
-    id_fig = go.Figure()
-    id_fig.add_hline(y=true_d, line_dash="dash", line_color="grey",
-                     annotation_text=f"true d = {true_d}",
-                     annotation_position="top right")
+    fits   = _fit_scaling(ns, means, true_d)
+    log_ns = [float(np.log(n)) for n in ns]
+
+    id_fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.10,
+        subplot_titles=(
+            f"{est_name} — estimated ID vs log n",
+            "log |d̂ − d| vs log n",
+        ),
+        row_heights=[0.55, 0.45],
+    )
+
+    # ── Row 1: ID vs log n ───────────────────────────────────────────────────
     id_fig.add_trace(go.Scatter(
-        x=ns + ns[::-1],
+        x=[log_ns[0], log_ns[-1]], y=[true_d, true_d],
+        mode="lines", name=f"true d = {true_d}",
+        line=dict(color="grey", width=1.5, dash="dash"),
+    ), row=1, col=1)
+    id_fig.add_trace(go.Scatter(
+        x=log_ns + log_ns[::-1],
         y=[m + c for m, c in zip(means, cis)] +
           [m - c for m, c in zip(reversed(means), reversed(cis))],
         fill="toself", fillcolor="rgba(44,160,44,0.12)",
         line=dict(width=0), showlegend=False, hoverinfo="skip",
-    ))
+    ), row=1, col=1)
     id_fig.add_trace(go.Scatter(
-        x=ns, y=means, mode="lines+markers", name=est_name,
+        x=log_ns, y=means, mode="lines+markers", name=est_name,
         line=dict(color="#2ca02c", width=2), marker=dict(size=7),
         error_y=dict(type="data", array=cis, visible=True, color="#2ca02c"),
-    ))
+    ), row=1, col=1)
+
+    # ── Row 2: log|error| vs log n ───────────────────────────────────────────
+    errors    = [abs(true_d - m) for m in means]
+    valid_pts = [(lx, e) for lx, e in zip(log_ns, errors) if e > 0]
+    if valid_pts:
+        log_ns_v, es_v = zip(*valid_pts)
+        log_es_v = [float(np.log(e)) for e in es_v]
+
+        id_fig.add_trace(go.Scatter(
+            x=log_ns_v, y=log_es_v, mode="markers", name="log|error|",
+            marker=dict(color="#2ca02c", size=8),
+        ), row=2, col=1)
+
+        if fits:
+            x0, x1 = log_ns_v[0], log_ns_v[-1]
+            id_fig.add_trace(go.Scatter(
+                x=[x0, x1],
+                y=[fits["a"] + fits["b"] * x0, fits["a"] + fits["b"] * x1],
+                mode="lines", name="fit",
+                line=dict(color="#d62728", width=1.5, dash="dash"),
+            ), row=2, col=1)
+
+    id_fig.update_xaxes(title_text="log n", row=2, col=1)
+    id_fig.update_yaxes(title_text="Estimated ID", row=1, col=1)
+    id_fig.update_yaxes(title_text="log |d̂ − d|", row=2, col=1)
     id_fig.update_layout(
-        title=f"{est_name} — estimated ID vs sample size",
-        xaxis_title="n_samples (log scale)", yaxis_title="Estimated ID",
-        xaxis_type="log",
-        template="plotly_white", margin=dict(t=50, b=40, l=50, r=20),
+        template="plotly_white",
+        margin=dict(t=60, b=40, l=50, r=20),
+        height=620,
     )
 
-    return id_fig
+    return id_fig, fits
 
 
 # ── Callback ───────────────────────────────────────────────────────────────────
 
+def _fits_card(f: dict):
+    """Render the error scaling fit as a Bootstrap card with MathJax."""
+    eq = (
+        r"$$\log|\hat{d} - d| = "
+        + f"{f['a']:+.3f}"
+        + r" + "
+        + f"{f['b']:.3f}"
+        + r"\,\log n$$"
+    )
+    return dbc.Card(dbc.CardBody([
+        html.P("Error scaling fit", className="text-muted small mb-2"),
+        dcc.Markdown(eq, mathjax=True, style={"marginBottom": "0"}),
+    ]), style={"display": "inline-block", "padding": "4px 8px"})
+
+
 @callback(
     Output("exp2-id-plot",    "figure"),
+    Output("exp2-fits",       "children"),
     Output("exp2-error",      "children"),
     Input("exp2-run-btn",     "n_clicks"),
     State("est-store",        "data"),
@@ -152,17 +219,18 @@ def build_figures(id_res: dict, rt_res: dict,
 )
 def run_exp2(_, est_store, ds_store, sample_sizes_str, n_runs):
     if not est_store or not ds_store:
-        return go.Figure(), "Estimator or dataset store is empty."
+        return go.Figure(), "", "Estimator or dataset store is empty."
     try:
         sample_sizes = [int(x.strip()) for x in (sample_sizes_str or "").split(",")
                         if x.strip()]
     except ValueError:
-        return go.Figure(), "Sample sizes must be comma-separated integers."
+        return go.Figure(), "", "Sample sizes must be comma-separated integers."
     if not sample_sizes:
-        return go.Figure(), "Enter at least one sample size."
+        return go.Figure(), "", "Enter at least one sample size."
     try:
         id_res, rt_res = compute(est_store, ds_store, sample_sizes, int(n_runs or 5))
-        id_fig = build_figures(id_res, rt_res, ds_store["d"], est_store["name"])
-        return id_fig, ""
+        id_fig, fits = build_figures(id_res, rt_res, ds_store["d"], est_store["name"])
+        fits_div = _fits_card(fits) if fits else ""
+        return id_fig, fits_div, ""
     except Exception as exc:
-        return go.Figure(), f"Error: {exc}"
+        return go.Figure(), "", f"Error: {exc}"
