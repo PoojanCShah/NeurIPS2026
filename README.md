@@ -5,6 +5,8 @@ colorFrom: blue
 colorTo: indigo
 sdk: docker
 pinned: false
+license: apache-2.0
+short_description: Experiment Dashboard for Intrinsic Dimension Estimators
 ---
 
 # Code for NeurIPS 2026 Estimation
