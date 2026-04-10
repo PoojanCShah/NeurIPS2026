@@ -80,7 +80,7 @@ class QuantDim:
 
         # ── Step 2: geometric grid of codebook sizes ──────────────────────────
         k_min = self.k_min if self.k_min is not None else max(2, n_train // 50)
-        k_max = self.k_max if self.k_max is not None else max(k_min + 1, n_train // 4)
+        k_max = self.k_max if self.k_max is not None else max(k_min + 1, n_train // 25)
         k_max = min(k_max, n_train - 1)
         k_min = min(k_min, k_max - 1)
 
